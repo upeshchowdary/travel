@@ -1,0 +1,68 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:8.0-alpine
+    container_name: travelmanagement-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: travelmanagement
+      MYSQL_USER: tmsuser
+      MYSQL_PASSWORD: tmspassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - travelmanagement-network
+
+  travelmanagement:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travelmanagement-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - JAVA_OPTS=-Xmx1024m -Xms512m
+      - SERVER_PORT=3000
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/travelmanagement?useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=tmsuser
+      - SPRING_DATASOURCE_PASSWORD=tmspassword
+      - SPRING_DATASOURCE_DRIVERCLASSNAME=com.mysql.cj.jdbc.Driver
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_SHOW_SQL=false
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQL8Dialect
+    volumes:
+      - tms-logs:/app/logs
+      - tms-data:/app/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+    networks:
+      - travelmanagement-network
+
+volumes:
+  mysql-data:
+    driver: local
+  tms-logs:
+    driver: local
+  tms-data:
+    driver: local
+
+networks:
+  travelmanagement-network:
+    driver: bridge

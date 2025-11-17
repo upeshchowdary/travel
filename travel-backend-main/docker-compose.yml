@@ -1,0 +1,43 @@
+version: '3.9'
+
+services:
+  travelmanagement:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: travelmanagement-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
+      - SERVER_PORT=3000
+      - SPRING_DATASOURCE_URL=jdbc:h2:mem:travelmanagement
+      - SPRING_DATASOURCE_DRIVERCLASSNAME=org.h2.Driver
+      - SPRING_DATASOURCE_USERNAME=sa
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.H2Dialect
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=create-drop
+      - SPRING_JPA_SHOW_SQL=false
+      - SPRING_H2_CONSOLE_ENABLED=true
+    volumes:
+      - tms-logs:/app/logs
+      - tms-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/actuator/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    networks:
+      - travelmanagement-network
+
+volumes:
+  tms-logs:
+    driver: local
+  tms-data:
+    driver: local
+
+networks:
+  travelmanagement-network:
+    driver: bridge
